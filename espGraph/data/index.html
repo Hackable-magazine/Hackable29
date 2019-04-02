@@ -1,0 +1,174 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>Environnement</title>
+  <meta charset="utf-8"/>
+  <script src="Chart.bundle.min.js"></script>
+  <script src="utils.js"></script>
+  <script src="papaparse.min.js"></script>
+  <script src="mytooltips.js"></script>
+  <style>
+  canvas {
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+  }
+  #chartjs-tooltip {
+    opacity: 1;
+    position: absolute;
+    background: rgba(0, 0, 0, .7);
+    color: white;
+    border-radius: 3px;
+    -webkit-transition: all .1s ease;
+    transition: all .1s ease;
+    pointer-events: none;
+    -webkit-transform: translate(-50%, 0);
+    transform: translate(-50%, 0);
+  }
+
+  .chartjs-tooltip-key {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 10px;
+  }
+  </style>
+</head>
+
+<body>
+  <div id="container" style="width: 100%;">
+    <canvas id="canvas"></canvas>
+  </div>
+  <script>
+    var timeFormat = 'HH:mm:ss DD/MM/YYYY';
+
+    // Array pour le graphique
+    var lab = [];
+    var temp = [];
+    var hum = [];
+    var pres = [];
+    var numrow = 0;
+
+    function getQueryVariable(variable){
+      var query = window.location.search.substring(1);
+      var vars = query.split("&");
+      for (var i=0;i<vars.length;i++) {
+           var pair = vars[i].split("=");
+           if(pair[0] == variable){return pair[1];}
+      }
+      return(false);
+    }
+
+    // paramètre ?
+    var maxn = getQueryVariable("maxn");
+    if(!maxn) maxn = 48;
+
+    // analyse du fichier CSV
+    Papa.parse("data.csv", {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      step: function(row) {
+        // remplissage des array
+        lab.push(row.data[0].label);
+        temp.push(row.data[0].temp);
+        hum.push(row.data[0].hum);
+        pres.push(row.data[0].pression);
+        // max 48 enregs
+	if(lab.length > maxn) {
+          lab.shift();
+          temp.shift();
+          hum.shift();
+          pres.shift();
+        }
+      },
+      complete: function() {
+        console.log("All done!");
+      }
+    });
+
+    var color = Chart.helpers.color;
+    var barChartData = {
+      labels: lab,
+      datasets: [{
+        label: 'Température',
+        backgroundColor: color(window.chartColors.red).alpha(0.5).rgbString(),  // couleur remplissage
+        borderColor: window.chartColors.red,  // couleur ligne
+        pointBackgroundColor: window.chartColors.red,
+//        borderWidth: 1,  // taille ligne
+        fill: false,     // ligne simple
+//        lineTension: 0,  // ligne droite:
+        cubicInterpolationMode: 'monotone',
+        hidden: false,
+        data: temp,
+        yAxisID: 'y-axis-1',
+      }, {
+        label: 'Humidité',
+        backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
+        borderColor: window.chartColors.blue,
+        pointBackgroundColor: window.chartColors.blue,
+        cubicInterpolationMode: 'monotone',
+        fill: false,
+        hidden: false,
+        data: hum,
+        yAxisID: 'y-axis-1',
+      }, {
+        label: 'Pression',
+        backgroundColor: color(window.chartColors.green).alpha(0.5).rgbString(),
+        borderColor: window.chartColors.green,
+        pointBackgroundColor: window.chartColors.green,
+//        lineTension: 0,
+        cubicInterpolationMode: 'monotone',
+        fill: false,
+        data: pres,
+        yAxisID: 'y-axis-2',
+      }]
+
+    };
+
+    window.onload = function() {
+      var ctx = document.getElementById('canvas').getContext('2d');
+      window.myBar = new Chart(ctx, {
+        type: 'line',
+        data: barChartData,
+        options: {
+          responsive: true,
+          legend: {
+            position: 'top',
+          },
+          title: {
+            display: true,
+            text: 'Station météo 1'
+          },
+          scales: {
+            xAxes: [{
+              type: 'time',
+              time: {
+	        format: timeFormat
+              }
+            }],
+            yAxes: [{
+              type: 'linear',
+              position: 'left',
+              id: 'y-axis-1',
+              },{
+              type: 'linear',
+              position: 'right',
+              id: 'y-axis-2',
+              gridLines: {
+                drawOnChartArea: false,
+              }
+            }]
+          },
+          tooltips: {
+            enabled: false,
+            mode: 'index',
+            position: 'nearest',
+            custom: customTooltips
+          }
+        }
+      });
+    };
+  </script>
+</body>
+</html>
